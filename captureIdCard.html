@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Capture ID Card</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-image: url('hz.jpg');
+            background-size: cover;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            position: relative;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            width: 90%;
+            max-width: 800px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h2 {
+            color: #2c3e50;
+            text-align: center;
+        }
+        img.logo {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 100px;
+        }
+        .welcome {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            font-size: 16px;
+            color: black;
+            font-weight: bold;
+        }
+        .info {
+            position: absolute;
+            top: 70px;
+            left: 20px;
+            font-size: 14px;
+            color: black;
+            font-weight: bold;
+        }
+        video {
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            margin-top: 10px;
+            display: block;
+        }
+        .result {
+            margin-top: 20px;
+            font-weight: bold;
+            color: red;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js"></script>
+</head>
+<body>
+    <img src="images.png" alt="University Logo" class="logo">
+    <div class="welcome" id="welcomeMessage"></div>
+    <div class="info" id="userInfo"></div>
+    <div class="container">
+        <h2>Verify ID Card</h2>
+        <video id="video" autoplay></video>
+        <div class="result" id="matchResult"></div>
+    </div>
+
+    <script>
+        if (!sessionStorage.getItem('loggedIn')) {
+            window.location.href = 'login.html';
+        }
+
+        const userId = 'LAL84624';
+        const userName = 'Lalit Kumar';
+        const userPost = 'Junior Ambassador On Training';
+        document.getElementById('welcomeMessage').innerHTML = `Welcome, ${userName} (User ID: ${userId})<br/><span style="font-size: 14px;">${userPost}</span>`;
+
+        const options = { timeZone: 'Asia/Kolkata', year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' };
+        const currentDateTime = new Date().toLocaleString('en-US', options);
+        document.getElementById('userInfo').innerHTML = `${currentDateTime}`;
+
+        // IP Address fetching
+        fetch('https://api.ipify.org?format=json')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('userInfo').innerHTML += `<br/>IP Address: ${data.ip}`;
+            });
+
+        // Geolocation
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(position => {
+                const { latitude, longitude } = position.coords;
+                document.getElementById('userInfo').innerHTML += `<br/>Location: Latitude: ${latitude}, Longitude: ${longitude}`;
+            }, () => {
+                document.getElementById('userInfo').innerHTML += "<br/>Location access denied.";
+            });
+        } else {
+            document.getElementById('userInfo').innerHTML += "<br/>Geolocation is not supported by this browser.";
+        }
+        
+        const operatingSystem = navigator.userAgent.split(' ').join('<br/>');
+        document.getElementById('userInfo').innerHTML = `${currentDateTime}<br/>IP Address: <span id="ipAddress"></span><br/>Location: <span id="location"></span><br/><br/>OS: <span id="osInfo">${operatingSystem}</span>`;
+
+        fetch('https://api.ipify.org?format=json')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('ipAddress').textContent = data.ip;
+            });
+
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(position => {
+                const { latitude, longitude } = position.coords;
+                document.getElementById('location').textContent = `Latitude: ${latitude}, Longitude: ${longitude}`;
+            }, () => {
+                document.getElementById('location').textContent = "Location access denied.";
+            });
+        } else {
+            document.getElementById('location').textContent = "Geolocation is not supported by this browser.";
+        }
+
+        const video = document.getElementById('video');
+
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => {
+                video.srcObject = stream;
+                // Start the verification process after the stream starts
+                setTimeout(() => {
+                    verifyIDCard();
+                }, 2000);
+            })
+            .catch(err => {
+                console.error("Error accessing camera: ", err);
+            });
+
+        function verifyIDCard() {
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d');
+
+            // Draw the current video frame to the canvas
+            ctx.drawImage(video, 0, 0);
+            const idCardImageData = canvas.toDataURL('image/png');
+
+            // Recognize text on ID card
+            Tesseract.recognize(idCardImageData, 'eng')
+                .then(({ data: { text } }) => {
+                    const cleanedText = text.replace(/\s+/g, ' ').trim();
+
+                    // Check for the word "Department"
+                    if (cleanedText.includes("Department")) {
+                        document.getElementById('matchResult').innerText = "ID Card verified successfully!";
+                        setTimeout(() => {
+                            window.location.href = 'shareLocation.html'; // Redirect to Share Location page
+                        }, 2000);
+                    } else {
+                        document.getElementById('matchResult').innerText = "ID Card details do not match. Trying again...";
+                        setTimeout(verifyIDCard, 3000); // Retry after 3 seconds
+                    }
+                })
+                .catch(err => {
+                    console.error("Error recognizing text: ", err);
+                    document.getElementById('matchResult').innerText = "Failed to recognize text from ID card. Trying again...";
+                    setTimeout(verifyIDCard, 3000); // Retry after 3 seconds
+                });
+        }
+    </script>
+
+    <script src="https://static.app/js/static.js" type="text/javascript"></script>
+</body>
+</html>

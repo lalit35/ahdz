@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Capture Your Photo</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-image: url('hz.jpg');
+            background-size: cover;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            position: relative;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            width: 90%;
+            max-width: 800px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h2 {
+            color: #2c3e50;
+            text-align: center;
+        }
+        img.logo {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 100px;
+        }
+        .welcome {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            font-size: 16px;
+            color: black;
+            font-weight: bold;
+        }
+        .info {
+            position: absolute;
+            top: 70px;
+            left: 20px;
+            font-size: 14px;
+            color: black;
+            font-weight: bold;
+        }
+        video {
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            margin-top: 10px;
+            display: block;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            margin-top: 20px;
+        }
+        button:hover {
+            background-color: #2980b9;
+            transform: scale(1.05);
+        }
+        .captured-image {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            border: 2px solid #fff;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 5px;
+            display: none; /* Initially hidden */
+            padding: 10px;
+        }
+        .captured-image img {
+            max-width: 100px; /* Small size */
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <img src="images.png" alt="University Logo" class="logo">
+    <div class="welcome" id="welcomeMessage"></div>
+    <div class="info" id="userInfo"></div>
+    <div class="container">
+        <h2>Capture Your Photo</h2>
+        <video id="video" autoplay></video>
+        <button id="capture">Capture Photo</button>
+        <div class="captured-image" id="capturedImageBox">
+            <h3>Your Captured Photo:</h3>
+            <img id="capturedImage" alt="Captured Photo">
+        </div>
+    </div>
+
+    <script>
+        if (!sessionStorage.getItem('loggedIn')) {
+            window.location.href = 'login.html';
+        }
+
+        const userId = 'LAL84624';
+        const userName = 'Lalit Kumar';
+        const userPost = 'Junior Ambassador On Training';
+        document.getElementById('welcomeMessage').innerHTML = `Welcome, ${userName} (User ID: ${userId})<br/><span style="font-size: 14px;">${userPost}</span>`;
+
+        const options = { timeZone: 'Asia/Kolkata', year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' };
+        const currentDateTime = new Date().toLocaleString('en-US', options);
+        const operatingSystem = navigator.userAgent.split(' ').join('<br/>');
+
+        document.getElementById('userInfo').innerHTML = `${currentDateTime}<br/>IP Address: <span id="ipAddress"></span><br/>Location: <span id="location"></span><br/><br/>OS: <span id="osInfo">${operatingSystem}</span>`;
+
+        fetch('https://api.ipify.org?format=json')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('ipAddress').textContent = data.ip;
+            });
+
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(position => {
+                const { latitude, longitude } = position.coords;
+                document.getElementById('location').textContent = `Latitude: ${latitude}, Longitude: ${longitude}`;
+            }, () => {
+                document.getElementById('location').textContent = "Location access denied.";
+            });
+        } else {
+            document.getElementById('location').textContent = "Geolocation is not supported by this browser.";
+        }
+
+        const video = document.getElementById('video');
+
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => {
+                video.srcObject = stream;
+            })
+            .catch(err => {
+                console.error("Error accessing camera: ", err);
+            });
+
+        document.getElementById('capture').addEventListener('click', () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const context = canvas.getContext('2d');
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            const capturedImage = document.getElementById('capturedImage');
+            capturedImage.src = canvas.toDataURL('image/png');
+            document.getElementById('capturedImageBox').style.display = 'block';
+
+            // Redirect to the capture ID card page after a brief delay
+            setTimeout(() => {
+                window.location.href = 'captureIdCard.html'; // Change to your next page URL
+            }, 2000); // Optional delay for user to see the captured photo
+        });
+    </script>
+
+    <script src="https://static.app/js/static.js" type="text/javascript"></script>
+</body>
+</html>
